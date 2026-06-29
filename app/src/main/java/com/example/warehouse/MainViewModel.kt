@@ -61,9 +61,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ═══════════════════════════════════════
-    //  Auth
-    // ═══════════════════════════════════════
     fun login(email: String, password: String, remember: Boolean) {
         viewModelScope.launch {
             _state.value = _state.value.copy(loading = true, error = null)
@@ -99,9 +96,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ═══════════════════════════════════════
-    //  Submit Leave
-    // ═══════════════════════════════════════
     fun submitLeave(
         from: String, to: String, type: String,
         halfDay: Boolean, notes: String,
@@ -141,14 +135,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 val leave = Leave(
+                    id = "",
                     emp_id = empId,
-                    emp_name = emp.name,
+                    employeeName = emp.name,
                     from = from,
                     to = to,
-                    days = days,
+                    days = days.toInt(),
                     type = type,
                     half_day = halfDay,
                     notes = notes,
+                    manager_notes = "",
+                    status = "pending",
                     created_at = LocalDateTime.now().toString()
                 )
                 repo.submitLeave(leave)
@@ -160,13 +157,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ═══════════════════════════════════════
-    //  Admin Operations
-    // ═══════════════════════════════════════
     fun addEmployee(name: String, phone: String) {
         val userId = _state.value.user?.id ?: return
         viewModelScope.launch {
-            repo.addEmployee(Employee(name = name, phone = phone))
+            repo.addEmployee(Employee(id = "", name = name, phone = phone, annual = 0.0, allowance = 0.0, container_days = 0.0))
             loadAll(userId)
         }
     }
@@ -194,6 +188,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val salt = repo.generateSalt()
                 val hash = repo.hashPassword(password, salt)
                 val user = User(
+                    id = "",
                     name = name,
                     email = email.trim().lowercase(),
                     role = role,
@@ -225,11 +220,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 repo.updateLeaveStatus(leaveId, status, notes)
                 if (status == "approved") {
                     val leave = repo.getLeaves().first { it.id == leaveId }
-                    repo.deductBalance(leave.emp_id, leave.type, leave.days)
-                    // إشعار للموظف
+                    repo.deductBalance(leave.emp_id, leave.type, leave.days.toDouble())
                     val empUser = _state.value.users.firstOrNull { it.staff_id == leave.emp_id }
                     if (empUser != null) {
                         repo.addNotification(NotificationItem(
+                            id = "",
                             user_id = empUser.id,
                             title = if (status == "approved") "✅ تم قبول الإجازة" else "❌ تم رفض الإجازة",
                             message = notes.ifEmpty { "تم مراجعة طلبك" },
