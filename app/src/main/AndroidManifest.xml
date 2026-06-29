@@ -6,9 +6,9 @@
     <application
         android:name=".App"
         android:allowBackup="true"
-        android:icon="@android:drawable/ic_menu_compass"
+        android:icon="@android:drawable/sym_def_app_icon"
         android:label="إجازات المخازن"
-        android:roundIcon="@android:drawable/ic_menu_compass"
+        android:roundIcon="@android:drawable/sym_def_app_icon"
         android:supportsRtl="true"
         android:theme="@style/Theme.Warehouse">
 
