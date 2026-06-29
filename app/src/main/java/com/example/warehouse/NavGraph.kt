@@ -8,8 +8,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import androidx.navigation.compose.*
-import androidx.compose.material3.NavigationBarItem
 
 @Composable
 fun MainNav() {
@@ -56,7 +56,7 @@ fun MainNav() {
 }
 
 @Composable
-fun NavItem(nav: androidx.navigation.NavController, route: String, label: String, icon: ImageVector) {
+fun NavItem(nav: NavController, route: String, label: String, icon: ImageVector) {
     val backStack by nav.currentBackStackEntryAsState()
     NavigationBarItem(
         selected = backStack?.destination?.route == route,
