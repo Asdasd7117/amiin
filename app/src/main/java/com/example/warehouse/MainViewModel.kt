@@ -140,7 +140,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     employeeName = emp.name,
                     from = from,
                     to = to,
-                    days = days.toInt(),
+                    days = days,
                     type = type,
                     half_day = halfDay,
                     notes = notes,
@@ -220,7 +220,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 repo.updateLeaveStatus(leaveId, status, notes)
                 if (status == "approved") {
                     val leave = repo.getLeaves().first { it.id == leaveId }
-                    repo.deductBalance(leave.emp_id, leave.type, leave.days.toDouble())
+                    repo.deductBalance(leave.emp_id, leave.type, leave.days)
                     val empUser = _state.value.users.firstOrNull { it.staff_id == leave.emp_id }
                     if (empUser != null) {
                         repo.addNotification(NotificationItem(
