@@ -1,0 +1,47 @@
+workflows:
+  android-workflow:
+    name: Android Build
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      vars:
+        PACKAGE_NAME: "com.example.warehouse"
+      groups:
+        - supabase_credentials
+      flutter: stable
+      java: 17
+      xcode: latest
+      cocoapods: default
+    
+    scripts:
+      - name: Set Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      
+      - name: Set Supabase credentials
+        script: |
+          sed -i "s|https://YOUR_PROJECT.supabase.co|$SUPABASE_URL|g" app/build.gradle.kts
+          sed -i "s|YOUR_ANON_KEY|$SUPABASE_KEY|g" app/build.gradle.kts
+      
+      - name: Build Android APK
+        script: |
+          chmod +x gradlew
+          ./gradlew clean
+          ./gradlew assembleRelease --no-daemon --stacktrace
+      
+      - name: Build Android App Bundle
+        script: |
+          ./gradlew bundleRelease --no-daemon --stacktrace
+    
+    artifacts:
+      - build/outputs/**/*.apk
+      - build/outputs/**/*.aab
+      - build/outputs/**/*.map
+    
+    publishing:
+      email:
+        recipients:
+          - user@example.com
+        notify:
+          success: true
+          failure: true
