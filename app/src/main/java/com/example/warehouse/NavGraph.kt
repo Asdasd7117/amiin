@@ -3,12 +3,7 @@ package com.example.warehouse
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -63,12 +58,13 @@ fun MainNav() {
     }
 }
 
-// هذا الوسم @Composable هو الحل السحري الذي كان مفقوداً
 @Composable
 fun NavItem(nav: NavController, route: String, label: String, icon: ImageVector) {
-    val backStack by nav.currentBackStackEntryAsState()
+    val navBackStackEntry by nav.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+    
     NavigationBarItem(
-        selected = backStack?.destination?.route == route,
+        selected = currentRoute == route,
         onClick = { nav.navigate(route) { launchSingleTop = true } },
         icon = { Icon(icon, contentDescription = label) },
         label = { Text(label) },
