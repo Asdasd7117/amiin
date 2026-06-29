@@ -19,7 +19,7 @@ fun MainNav() {
     if (state.user == null) {
         LoginScreen(vm)
     } else {
-        val user = state.user
+        val user = state.user!!
         val start = if (state.settings.show_dash_on_login) "dash" else "records"
 
         Scaffold(
