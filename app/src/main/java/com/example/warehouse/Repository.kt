@@ -5,11 +5,12 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.util.Base64
 
 val Context.ds by preferencesDataStore("warehouse_prefs")
@@ -18,9 +19,6 @@ class Repository(private val ctx: Context) {
 
     private val client get() = SupabaseClient.client
 
-    // ═══════════════════════════════════════
-    //  أدوات كلمة المرور
-    // ═══════════════════════════════════════
     fun generateSalt(): String {
         val bytes = ByteArray(16)
         SecureRandom().nextBytes(bytes)
@@ -34,9 +32,6 @@ class Repository(private val ctx: Context) {
         return digest.joinToString("") { "%02x".format(it) }
     }
 
-    // ═══════════════════════════════════════
-    //  حساب أيام العمل
-    // ═══════════════════════════════════════
     fun workDays(from: String, to: String): Int {
         if (from.isEmpty() || to.isEmpty()) return 0
         val f = LocalDate.parse(from)
@@ -57,13 +52,10 @@ class Repository(private val ctx: Context) {
         return if (halfDay) raw - 0.5 else raw.toDouble()
     }
 
-    // ═══════════════════════════════════════
-    //  Session (تذكرني)
-    // ═══════════════════════════════════════
     suspend fun saveSession(userId: String, remember: Boolean) {
         ctx.ds.edit {
-            this[stringPreferencesKey("user_id")] = userId
-            this[booleanPreferencesKey("remember")] = remember
+            it[stringPreferencesKey("user_id")] = userId
+            it[booleanPreferencesKey("remember")] = remember
         }
     }
 
@@ -75,12 +67,9 @@ class Repository(private val ctx: Context) {
     }
 
     suspend fun clearSession() {
-        ctx.ds.edit { clear() }
+        ctx.ds.edit { it.clear() }
     }
 
-    // ═══════════════════════════════════════
-    //  Auth
-    // ═══════════════════════════════════════
     suspend fun login(email: String, password: String): User {
         val user = client.postgrest.from("users")
             .select { filter { eq("email", email.trim().lowercase()) } }
@@ -97,15 +86,15 @@ class Repository(private val ctx: Context) {
         val salt = generateSalt()
         val hash = hashPassword(newPassword, salt)
         client.postgrest.from("users").update({
-            set("hash", hash)
-            set("salt", salt)
-            set("must_change_pass", false)
+            val json = buildJsonObject {
+                put("hash", hash)
+                put("salt", salt)
+                put("must_change_pass", false)
+            }
+            json
         }) { filter { eq("id", userId) } }
     }
 
-    // ═══════════════════════════════════════
-    //  Employees
-    // ═══════════════════════════════════════
     suspend fun getEmployees(): List<Employee> =
         client.postgrest.from("employees").select().decodeList<Employee>()
 
@@ -123,9 +112,6 @@ class Repository(private val ctx: Context) {
         client.postgrest.from("employees").delete { filter { eq("id", id) } }
     }
 
-    // ═══════════════════════════════════════
-    //  Users
-    // ═══════════════════════════════════════
     suspend fun getUsers(): List<User> =
         client.postgrest.from("users").select().decodeList<User>()
 
@@ -137,9 +123,6 @@ class Repository(private val ctx: Context) {
         client.postgrest.from("users").delete { filter { eq("id", id) } }
     }
 
-    // ═══════════════════════════════════════
-    //  Leaves
-    // ═══════════════════════════════════════
     suspend fun getLeaves(): List<Leave> =
         client.postgrest.from("leaves").select().decodeList<Leave>()
 
@@ -149,36 +132,37 @@ class Repository(private val ctx: Context) {
 
     suspend fun updateLeaveStatus(id: String, status: String, notes: String) {
         client.postgrest.from("leaves").update({
-            set("status", status)
-            set("manager_notes", notes)
+            val json = buildJsonObject {
+                put("status", status)
+                put("manager_notes", notes)
+            }
+            json
         }) { filter { eq("id", id) } }
     }
 
     suspend fun deductBalance(empId: String, type: String, days: Double) {
         val emp = getEmployees().firstOrNull { it.id == empId } ?: return
-        when (type) {
-            "annual" -> client.postgrest.from("employees").update({
-                set("annual", emp.annual - days)
-            }) { filter { eq("id", empId) } }
-            "allowance" -> client.postgrest.from("employees").update({
-                set("allowance", emp.allowance - days)
-            }) { filter { eq("id", empId) } }
-            "container" -> client.postgrest.from("employees").update({
-                set("container_days", emp.container_days - days)
-            }) { filter { eq("id", empId) } }
+        val newValue = when (type) {
+            "annual" -> emp.annual - days
+            "allowance" -> emp.allowance - days
+            "container" -> emp.container_days - days
+            else -> return
         }
+        val colName = when (type) {
+            "annual" -> "annual"
+            "allowance" -> "allowance"
+            else -> "container_days"
+        }
+        client.postgrest.from("employees").update({
+            val json = buildJsonObject { put(colName, newValue) }
+            json
+        }) { filter { eq("id", empId) } }
     }
 
-    // ═══════════════════════════════════════
-    //  Settings
-    // ═══════════════════════════════════════
     suspend fun getSettings(): AppSettings =
         client.postgrest.from("settings").select().decodeSingleOrNull<AppSettings>()
             ?: AppSettings()
 
-    // ═══════════════════════════════════════
-    //  Notifications
-    // ═══════════════════════════════════════
     suspend fun addNotification(n: NotificationItem) {
         client.postgrest.from("notifications").insert(n)
     }
