@@ -3,13 +3,21 @@ package com.example.warehouse
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.*
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 
 @Composable
 fun MainNav() {
@@ -61,7 +69,7 @@ fun NavItem(nav: NavController, route: String, label: String, icon: ImageVector)
     NavigationBarItem(
         selected = backStack?.destination?.route == route,
         onClick = { nav.navigate(route) { launchSingleTop = true } },
-        icon = { Icon(icon, label) },
+        icon = { Icon(icon, contentDescription = label) },
         label = { Text(label) },
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = C.primary,
