@@ -63,6 +63,7 @@ fun MainNav() {
     }
 }
 
+// هذا الوسم @Composable هو الحل السحري الذي كان مفقوداً
 @Composable
 fun NavItem(nav: NavController, route: String, label: String, icon: ImageVector) {
     val backStack by nav.currentBackStackEntryAsState()
