@@ -8,7 +8,6 @@ workflows:
         PACKAGE_NAME: "com.example.warehouse"
       groups:
         - supabase_credentials
-      flutter: stable
       java: 17
       xcode: latest
       cocoapods: default
@@ -20,14 +19,19 @@ workflows:
       
       - name: Set Supabase credentials
         script: |
-          sed -i "s|https://YOUR_PROJECT.supabase.co|$SUPABASE_URL|g" app/build.gradle.kts
-          sed -i "s|YOUR_ANON_KEY|$SUPABASE_KEY|g" app/build.gradle.kts
+          # استبدال القيم في build.gradle.kts
+          sed -i '' "s|https://YOUR_PROJECT.supabase.co|$SUPABASE_URL|g" app/build.gradle.kts
+          sed -i '' "s|YOUR_ANON_KEY|$SUPABASE_KEY|g" app/build.gradle.kts
+          
+          # التحقق من الاستبدال
+          echo "✓ تم تحديث بيانات Supabase"
+          grep "SUPABASE" app/build.gradle.kts || true
       
       - name: Build Android APK
         script: |
           chmod +x gradlew
           ./gradlew clean
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace --info
       
       - name: Build Android App Bundle
         script: |
