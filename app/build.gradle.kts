@@ -16,7 +16,6 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        // ✅ مفاتيح Supabase الخاصة بك
         buildConfigField("String", "SUPABASE_URL", "\"https://glfrwnzrhovojzixlubl.supabase.co\"")
         buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnJ3bnpyaG92b2p6aXhsdWJsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjczNzU2MSwiZXhwIjoyMDk4MzEzNTYxfQ.XrMw2zux4-FgefHv83_uUeTrZPke7bDZNFeRqxf8Feg\"")
     }
@@ -42,33 +41,28 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
 
-    // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("com.google.android.material:material:1.12.0")
 
-    // Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
-    // DataStore
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
-    // Supabase (محدثة إلى الإصدار 3.0.1 لحل مشكلة التحميل)
     implementation(platform("io.github.jan-tennert.supabase:bom:3.0.1"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:realtime-kt")
     implementation("io.github.jan-tennert.supabase:storage-kt")
-    
-    // Ktor Client (ضروري لـ Supabase)
+
     implementation("io.ktor:ktor-client-android:3.0.0")
     implementation("io.ktor:ktor-client-core:3.0.0")
     implementation("io.ktor:ktor-client-cio:3.0.0")
 
-    // Serialization & Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }
