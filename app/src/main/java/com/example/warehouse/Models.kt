@@ -33,7 +33,7 @@ data class Employee(
 data class Leave(
     val id: String = UUID.randomUUID().toString(),
     val emp_id: String = "",
-    val emp_name: String = "",
+    @SerialName("emp_name") val employeeName: String = "",
     val from: String = "",
     val to: String = "",
     val days: Double = 0.0,
