@@ -117,7 +117,6 @@ fun DashboardScreen(state: AppState) {
         Modifier.fillMaxSize().background(C.bg).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Hero
         item {
             Card(colors = CardDefaults.cardColors(containerColor = C.surface)) {
                 Column(Modifier.padding(16.dp)) {
@@ -139,7 +138,6 @@ fun DashboardScreen(state: AppState) {
             }
         }
 
-        // Stats
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatBox("$pendCount", "معلقة", C.war, Modifier.weight(1f))
@@ -152,14 +150,12 @@ fun DashboardScreen(state: AppState) {
             }
         }
 
-        // Calendar Strip
         item {
             Text("📅 الأيام المحجوزة (14 يوم قادم)", color = C.text2, fontSize = 13.sp)
             Spacer(Modifier.height(6.dp))
             CalendarStrip(state.leaves)
         }
 
-        // Pending
         item { Text("⏰ آخر الإجازات المعلقة", color = C.text2, fontSize = 13.sp) }
         val pend = state.leaves.filter { it.status == "pending" }.take(5)
         if (pend.isEmpty()) {
@@ -168,7 +164,6 @@ fun DashboardScreen(state: AppState) {
             items(pend) { LeaveCard(it) }
         }
 
-        // Approved
         item { Text("✅ آخر الإجازات المقبولة", color = C.text2, fontSize = 13.sp) }
         val ok = state.leaves.filter { it.status == "approved" }.take(5)
         if (ok.isEmpty()) {
@@ -487,7 +482,6 @@ fun UsersTab(users: List<User>, emps: List<Employee>, vm: MainViewModel) {
                             Icon(Icons.Default.Delete, null, tint = C.err)
                         }
                     }
-                    // زر إرسال بيانات الدخول عبر واتساب
                     val emp = emps.firstOrNull { it.id == u.staff_id }
                     if (emp != null && emp.phone.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
