@@ -71,13 +71,24 @@ class Repository(private val ctx: Context) {
     }
 
     suspend fun login(email: String, password: String): User {
-        val user = client.postgrest.from("users")
-            .select { filter { eq("email", email.trim().lowercase()) } }
-            .decodeSingleOrNull<User>()
-            ?: throw Exception("بيانات الدخول غير صحيحة")
+        val user = try {
+            client.postgrest.from("users")
+                .select { filter { eq("email", email.trim().lowercase()) } }
+                .decodeSingleOrNull<User>()
+        } catch (e: Exception) {
+            // Re-throw the original exception to preserve the real error 
+            // (Network, SQL, RLS, Serialization, Project URL, API Key, etc.) with its Stack Trace.
+            throw e
+        }
+
+        if (user == null) {
+            throw Exception("Debug: No user found with email '${email.trim().lowercase()}'. Possible causes: User does not exist, or RLS policy is blocking the SELECT.")
+        }
 
         val hash = hashPassword(password, user.salt)
-        if (hash != user.hash) throw Exception("بيانات الدخول غير صحيحة")
+        if (hash != user.hash) {
+            throw Exception("Debug: Password hash mismatch for user '${user.email}'. Expected hash: ${user.hash}, Calculated hash: $hash. Check if the salt or hash in the database is correct.")
+        }
 
         return user
     }
