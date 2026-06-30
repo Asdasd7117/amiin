@@ -25,6 +25,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow(AppState())
     val state: StateFlow<AppState> = _state
 
+    // 🔥 NEW: عرض أخطاء واضحة
+    private fun formatError(e: Exception): String {
+        val msg = e.message ?: "UNKNOWN_ERROR"
+        return when {
+            msg.contains("JWT") -> "🔐 مشكلة صلاحيات السيرفر"
+            msg.contains("network", true) -> "🌐 مشكلة اتصال بالإنترنت"
+            msg.contains("JSON") -> "📦 خطأ في البيانات من السيرفر"
+            msg.contains("duplicate") -> "⚠️ بيانات مكررة"
+            msg.contains("not found", true) -> "❌ بيانات غير موجودة"
+            else -> "⚠️ خطأ: $msg"
+        }
+    }
+
     init {
         viewModelScope.launch {
             val savedId = repo.getSession()
@@ -40,11 +53,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val users = repo.getUsers()
                 val user = users.firstOrNull { it.id == userId }
+
                 if (user == null) {
                     repo.clearSession()
                     _state.value = AppState()
                     return@launch
                 }
+
                 _state.value = AppState(
                     user = user,
                     users = users,
@@ -53,8 +68,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     settings = repo.getSettings(),
                     notifications = repo.getNotifications(userId)
                 )
+
             } catch (e: Exception) {
-                _state.value = _state.value.copy(error = e.message)
+                _state.value = _state.value.copy(error = formatError(e))
             } finally {
                 _state.value = _state.value.copy(loading = false)
             }
@@ -68,10 +84,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val user = repo.login(email, password)
                 repo.saveSession(user.id, remember)
                 loadAll(user.id)
+
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     loading = false,
-                    error = e.message ?: "فشل تسجيل الدخول"
+                    error = formatError(e)
                 )
             }
         }
@@ -84,7 +101,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 repo.changePassword(userId, newPassword)
                 loadAll(userId)
             } catch (e: Exception) {
-                _state.value = _state.value.copy(error = e.message)
+                _state.value = _state.value.copy(error = formatError(e))
             }
         }
     }
@@ -104,17 +121,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     ) {
         val user = _state.value.user ?: return
         val empId = user.staff_id
+
         if (empId == null) {
             onError("حساب المدير لا يرتبط بموظف")
             return
         }
+
         val emp = _state.value.employees.firstOrNull { it.id == empId }
+
         if (emp == null) {
             onError("الموظف غير موجود")
             return
         }
 
         val rawDays = repo.workDays(from, to)
+
         if (rawDays <= 0) {
             onError("التواريخ تقع في أيام عطلة")
             return
@@ -122,11 +143,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
         val days = repo.calcLeaveDays(from, to, halfDay)
         val bal = getBalance(emp)
+
         val available = when (type) {
             "annual" -> bal.annual
             "allowance" -> bal.allowance
             else -> bal.containerDays
         }
+
         if (days > available) {
             onError("الرصيد غير كافٍ (${available} يوم)")
             return
@@ -148,11 +171,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     status = "pending",
                     created_at = LocalDateTime.now().toString()
                 )
+
                 repo.submitLeave(leave)
                 loadAll(user.id)
                 onSuccess()
+
             } catch (e: Exception) {
-                onError(e.message ?: "فشل الإرسال")
+                onError(formatError(e))
             }
         }
     }
@@ -160,24 +185,45 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun addEmployee(name: String, phone: String) {
         val userId = _state.value.user?.id ?: return
         viewModelScope.launch {
-            repo.addEmployee(Employee(id = "", name = name, phone = phone, annual = 0.0, allowance = 0.0, container_days = 0.0))
-            loadAll(userId)
+            try {
+                repo.addEmployee(
+                    Employee(
+                        id = "",
+                        name = name,
+                        phone = phone,
+                        annual = 0.0,
+                        allowance = 0.0,
+                        container_days = 0.0
+                    )
+                )
+                loadAll(userId)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = formatError(e))
+            }
         }
     }
 
     fun updateEmployee(emp: Employee) {
         val userId = _state.value.user?.id ?: return
         viewModelScope.launch {
-            repo.updateEmployee(emp)
-            loadAll(userId)
+            try {
+                repo.updateEmployee(emp)
+                loadAll(userId)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = formatError(e))
+            }
         }
     }
 
     fun deleteEmployee(id: String) {
         val userId = _state.value.user?.id ?: return
         viewModelScope.launch {
-            repo.deleteEmployee(id)
-            loadAll(userId)
+            try {
+                repo.deleteEmployee(id)
+                loadAll(userId)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = formatError(e))
+            }
         }
     }
 
@@ -187,6 +233,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val salt = repo.generateSalt()
                 val hash = repo.hashPassword(password, salt)
+
                 val user = User(
                     id = "",
                     name = name,
@@ -197,10 +244,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     salt = salt,
                     must_change_pass = true
                 )
+
                 repo.addUser(user)
                 loadAll(currentUserId)
+
             } catch (e: Exception) {
-                _state.value = _state.value.copy(error = e.message)
+                _state.value = _state.value.copy(error = formatError(e))
             }
         }
     }
@@ -208,8 +257,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteUser(id: String) {
         val userId = _state.value.user?.id ?: return
         viewModelScope.launch {
-            repo.deleteUser(id)
-            loadAll(userId)
+            try {
+                repo.deleteUser(id)
+                loadAll(userId)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = formatError(e))
+            }
         }
     }
 
@@ -218,23 +271,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 repo.updateLeaveStatus(leaveId, status, notes)
+
                 if (status == "approved") {
                     val leave = repo.getLeaves().first { it.id == leaveId }
                     repo.deductBalance(leave.emp_id, leave.type, leave.days)
+
                     val empUser = _state.value.users.firstOrNull { it.staff_id == leave.emp_id }
+
                     if (empUser != null) {
-                        repo.addNotification(NotificationItem(
-                            id = "",
-                            user_id = empUser.id,
-                            title = if (status == "approved") "✅ تم قبول الإجازة" else "❌ تم رفض الإجازة",
-                            message = notes.ifEmpty { "تم مراجعة طلبك" },
-                            created_at = LocalDateTime.now().toString()
-                        ))
+                        repo.addNotification(
+                            NotificationItem(
+                                id = "",
+                                user_id = empUser.id,
+                                title = if (status == "approved") "✅ تم قبول الإجازة" else "❌ تم رفض الإجازة",
+                                message = notes.ifEmpty { "تم مراجعة طلبك" },
+                                created_at = LocalDateTime.now().toString()
+                            )
+                        )
                     }
                 }
+
                 loadAll(userId)
+
             } catch (e: Exception) {
-                _state.value = _state.value.copy(error = e.message)
+                _state.value = _state.value.copy(error = formatError(e))
             }
         }
     }
