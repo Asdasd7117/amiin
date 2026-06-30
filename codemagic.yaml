@@ -1,21 +1,18 @@
-Workflows:
+workflows:
   android-workflow:
     name: Android Debug Build
-
+    instance_type: mac_mini_m1
+    environment:
+      java: 17
     scripts:
       - name: Grant permissions
         script: chmod +x ./gradlew
-
       - name: Clean project
         script: ./gradlew clean
-
       - name: Build Debug APK
-        # أضفنا --refresh-dependencies هنا لإجبار السيرفر على تحديث المكتبات
         script: ./gradlew assembleDebug --refresh-dependencies
-
     artifacts:
       - app/build/outputs/apk/debug/*.apk
-
     publishing:
       email:
         recipients:
