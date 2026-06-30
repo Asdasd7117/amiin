@@ -3,15 +3,8 @@ package com.example.warehouse
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -38,15 +31,15 @@ fun MainNav() {
             bottomBar = {
                 NavigationBar(containerColor = C.surface) {
                     if (can(user, "view_dashboard"))
-                        NavItem(nav, "dash", "الرئيسية", Icons.Default.Home)
+                        MyNavItem(nav, "dash", "الرئيسية", Icons.Default.Home)
                     if (can(user, "request_leave"))
-                        NavItem(nav, "entry", "إجازة", Icons.Default.Add)
+                        MyNavItem(nav, "entry", "إجازة", Icons.Default.Add)
                     if (can(user, "view_own_leaves"))
-                        NavItem(nav, "records", "سجلاتي", Icons.Default.List)
+                        MyNavItem(nav, "records", "سجلاتي", Icons.Default.List)
                     if (can(user, "view_balances"))
-                        NavItem(nav, "balance", "الأرصدة", Icons.Default.PieChart)
+                        MyNavItem(nav, "balance", "الأرصدة", Icons.Default.PieChart)
                     if (user.role == "admin")
-                        NavItem(nav, "admin", "إدارة", Icons.Default.Settings)
+                        MyNavItem(nav, "admin", "إدارة", Icons.Default.Settings)
                 }
             }
         ) { padding ->
@@ -66,16 +59,17 @@ fun MainNav() {
 }
 
 @Composable
-fun NavItem(nav: NavController, route: String, label: String, icon: ImageVector) {
-    val navBackStackEntry by nav.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
-
-    NavigationBarItem(
-        selected = currentRoute == route,
+fun MyNavItem(nav: NavController, route: String, label: String, icon: ImageVector) {
+    val backStack by nav.currentBackStackEntryAsState()
+    val isSelected = backStack?.destination?.route == route
+    
+    // استخدام المسار الكامل للمكتبة لتجنب أي تعارض
+    androidx.compose.material3.NavigationBarItem(
+        selected = isSelected,
         onClick = { nav.navigate(route) { launchSingleTop = true } },
-        icon = { Icon(icon, contentDescription = label) },
-        label = { Text(label) },
-        colors = NavigationBarItemDefaults.colors(
+        icon = { Icon(imageVector = icon, contentDescription = label) },
+        label = { Text(text = label) },
+        colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
             selectedIconColor = C.primary,
             selectedTextColor = C.primary,
             indicatorColor = C.primary.copy(alpha = 0.15f)
