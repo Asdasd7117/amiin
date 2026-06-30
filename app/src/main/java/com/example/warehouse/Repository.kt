@@ -19,6 +19,8 @@ class Repository(private val ctx: Context) {
 
     private val client get() = SupabaseClient.client
 
+    // ---------------- SECURITY ----------------
+
     fun generateSalt(): String {
         val bytes = ByteArray(16)
         SecureRandom().nextBytes(bytes)
@@ -32,25 +34,29 @@ class Repository(private val ctx: Context) {
         return digest.joinToString("") { "%02x".format(it) }
     }
 
-    fun workDays(from: String, to: String): Int {
-        if (from.isEmpty() || to.isEmpty()) return 0
-        val f = LocalDate.parse(from)
-        val t = LocalDate.parse(to)
-        if (t.isBefore(f)) return 0
-        var count = 0
-        var d = f
-        while (!d.isAfter(t)) {
-            if (d.dayOfWeek != DayOfWeek.FRIDAY) count++
-            d = d.plusDays(1)
+    // ---------------- LOGIN (FIXED) ----------------
+    suspend fun login(email: String, password: String): User {
+
+        val cleanEmail = email.trim().lowercase()
+
+        val user = client.postgrest
+            .from("users")
+            .select()
+            .decodeList<User>()
+            .firstOrNull {
+                it.email.trim().lowercase() == cleanEmail
+            } ?: throw Exception("بيانات الدخول غير صحيحة")
+
+        val hash = hashPassword(password, user.salt)
+
+        if (hash != user.hash) {
+            throw Exception("كلمة المرور غير صحيحة")
         }
-        return count
+
+        return user
     }
 
-    fun calcLeaveDays(from: String, to: String, halfDay: Boolean): Double {
-        val raw = workDays(from, to)
-        if (raw <= 0) return 0.0
-        return if (halfDay) raw - 0.5 else raw.toDouble()
-    }
+    // ---------------- SESSION ----------------
 
     suspend fun saveSession(userId: String, remember: Boolean) {
         ctx.ds.edit {
@@ -70,30 +76,7 @@ class Repository(private val ctx: Context) {
         ctx.ds.edit { it.clear() }
     }
 
-    suspend fun login(email: String, password: String): User {
-        val user = client.postgrest.from("users")
-            .select { filter { eq("email", email.trim().lowercase()) } }
-            .decodeSingleOrNull<User>()
-            ?: throw Exception("بيانات الدخول غير صحيحة")
-
-        val hash = hashPassword(password, user.salt)
-        if (hash != user.hash) throw Exception("بيانات الدخول غير صحيحة")
-
-        return user
-    }
-
-    suspend fun changePassword(userId: String, newPassword: String) {
-        val salt = generateSalt()
-        val hash = hashPassword(newPassword, salt)
-        client.postgrest.from("users").update({
-            val json = buildJsonObject {
-                put("hash", hash)
-                put("salt", salt)
-                put("must_change_pass", false)
-            }
-            json
-        }) { filter { eq("id", userId) } }
-    }
+    // ---------------- EMPLOYEES ----------------
 
     suspend fun getEmployees(): List<Employee> =
         client.postgrest.from("employees").select().decodeList<Employee>()
@@ -112,6 +95,8 @@ class Repository(private val ctx: Context) {
         client.postgrest.from("employees").delete { filter { eq("id", id) } }
     }
 
+    // ---------------- USERS ----------------
+
     suspend fun getUsers(): List<User> =
         client.postgrest.from("users").select().decodeList<User>()
 
@@ -123,6 +108,8 @@ class Repository(private val ctx: Context) {
         client.postgrest.from("users").delete { filter { eq("id", id) } }
     }
 
+    // ---------------- LEAVES ----------------
+
     suspend fun getLeaves(): List<Leave> =
         client.postgrest.from("leaves").select().decodeList<Leave>()
 
@@ -132,36 +119,48 @@ class Repository(private val ctx: Context) {
 
     suspend fun updateLeaveStatus(id: String, status: String, notes: String) {
         client.postgrest.from("leaves").update({
-            val json = buildJsonObject {
+            buildJsonObject {
                 put("status", status)
                 put("manager_notes", notes)
             }
-            json
-        }) { filter { eq("id", id) } }
+        }) {
+            filter { eq("id", id) }
+        }
     }
+
+    // ---------------- BALANCE ----------------
 
     suspend fun deductBalance(empId: String, type: String, days: Double) {
         val emp = getEmployees().firstOrNull { it.id == empId } ?: return
+
         val newValue = when (type) {
             "annual" -> emp.annual - days
             "allowance" -> emp.allowance - days
             "container" -> emp.container_days - days
             else -> return
         }
+
         val colName = when (type) {
             "annual" -> "annual"
             "allowance" -> "allowance"
             else -> "container_days"
         }
+
         client.postgrest.from("employees").update({
-            val json = buildJsonObject { put(colName, newValue) }
-            json
-        }) { filter { eq("id", empId) } }
+            buildJsonObject { put(colName, newValue) }
+        }) {
+            filter { eq("id", empId) }
+        }
     }
 
+    // ---------------- SETTINGS ----------------
+
     suspend fun getSettings(): AppSettings =
-        client.postgrest.from("settings").select().decodeSingleOrNull<AppSettings>()
-            ?: AppSettings()
+        client.postgrest.from("settings")
+            .select()
+            .decodeSingleOrNull<AppSettings>() ?: AppSettings()
+
+    // ---------------- NOTIFICATIONS ----------------
 
     suspend fun addNotification(n: NotificationItem) {
         client.postgrest.from("notifications").insert(n)
