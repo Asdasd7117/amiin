@@ -63,13 +63,12 @@ fun MyNavItem(nav: NavController, route: String, label: String, icon: ImageVecto
     val backStack by nav.currentBackStackEntryAsState()
     val isSelected = backStack?.destination?.route == route
     
-    // استخدام المسار الكامل للمكتبة لتجنب أي تعارض
-    androidx.compose.material3.NavigationBarItem(
+    NavigationBarItem(
         selected = isSelected,
         onClick = { nav.navigate(route) { launchSingleTop = true } },
         icon = { Icon(imageVector = icon, contentDescription = label) },
         label = { Text(text = label) },
-        colors = androidx.compose.material3.NavigationBarItemDefaults.colors(
+        colors = NavigationBarItemDefaults.colors(
             selectedIconColor = C.primary,
             selectedTextColor = C.primary,
             indicatorColor = C.primary.copy(alpha = 0.15f)
