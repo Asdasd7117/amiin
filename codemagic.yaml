@@ -1,4 +1,4 @@
-workflows:
+Workflows:
   android-workflow:
     name: Android Debug Build
 
@@ -10,7 +10,8 @@ workflows:
         script: ./gradlew clean
 
       - name: Build Debug APK
-        script: ./gradlew assembleDebug
+        # أضفنا --refresh-dependencies هنا لإجبار السيرفر على تحديث المكتبات
+        script: ./gradlew assembleDebug --refresh-dependencies
 
     artifacts:
       - app/build/outputs/apk/debug/*.apk
