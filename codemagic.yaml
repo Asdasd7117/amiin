@@ -1,17 +1,16 @@
-Workflows:
+workflows:
   android-workflow:
     name: Android Debug Build
-
+    environment:
+      groups:
+        - android_sdk
     scripts:
       - name: Grant permissions
         script: chmod +x ./gradlew
-
       - name: Build Debug APK with Force Refresh
         script: ./gradlew clean assembleDebug --refresh-dependencies --no-daemon
-
     artifacts:
       - app/build/outputs/apk/debug/*.apk
-
     publishing:
       email:
         recipients:
