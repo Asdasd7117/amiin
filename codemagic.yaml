@@ -1,4 +1,4 @@
-workflows:
+Workflows:
   android-workflow:
     name: Android Debug Build
 
@@ -6,11 +6,8 @@ workflows:
       - name: Grant permissions
         script: chmod +x ./gradlew
 
-      - name: Clean project
-        script: ./gradlew clean
-
-      - name: Build Debug APK
-        script: ./gradlew assembleDebug
+      - name: Build Debug APK with Force Refresh
+        script: ./gradlew clean assembleDebug --refresh-dependencies --no-daemon
 
     artifacts:
       - app/build/outputs/apk/debug/*.apk
