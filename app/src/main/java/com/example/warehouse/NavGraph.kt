@@ -69,7 +69,7 @@ fun MainNav() {
 fun NavItem(nav: NavController, route: String, label: String, icon: ImageVector) {
     val navBackStackEntry by nav.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    
+
     NavigationBarItem(
         selected = currentRoute == route,
         onClick = { nav.navigate(route) { launchSingleTop = true } },
