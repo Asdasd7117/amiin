@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.Warehouse" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.Warehouse" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:statusBarColor">#0F0C29</item>
         <item name="android:windowBackground">#0F0C29</item>
         <item name="android:navigationBarColor">#0F0C29</item>
