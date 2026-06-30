@@ -2,11 +2,7 @@ package com.example.warehouse
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.PieChart
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -71,14 +67,14 @@ fun MainNav() {
 
 @Composable
 fun NavItem(nav: NavController, route: String, label: String, icon: ImageVector) {
-    val backStack by nav.currentBackStackEntryAsState()
-    val isSelected = backStack?.destination?.route == route
-    
+    val navBackStackEntry by nav.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     NavigationBarItem(
-        selected = isSelected,
+        selected = currentRoute == route,
         onClick = { nav.navigate(route) { launchSingleTop = true } },
-        icon = { Icon(imageVector = icon, contentDescription = label) },
-        label = { Text(text = label) },
+        icon = { Icon(icon, contentDescription = label) },
+        label = { Text(label) },
         colors = NavigationBarItemDefaults.colors(
             selectedIconColor = C.primary,
             selectedTextColor = C.primary,
