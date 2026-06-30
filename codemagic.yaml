@@ -9,8 +9,10 @@ workflows:
         script: chmod +x ./gradlew
       - name: Clean project
         script: ./gradlew clean
-      - name: Build Debug APK
-        script: ./gradlew assembleDebug --refresh-dependencies
+      - name: Build Debug APK with Verbose Logs
+        # إضافة --stacktrace و --info و --warning-mode all هي المفتاح لكشف الخطأ الحقيقي
+        script: |
+          ./gradlew assembleDebug --stacktrace --info --warning-mode all
     artifacts:
       - app/build/outputs/apk/debug/*.apk
     publishing:
