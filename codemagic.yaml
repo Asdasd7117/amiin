@@ -1,20 +1,20 @@
 workflows:
   android-workflow:
     name: Android Debug Build
-    instance_type: mac_mini_m1
-    environment:
-      java: 17
+
     scripts:
       - name: Grant permissions
         script: chmod +x ./gradlew
+
       - name: Clean project
         script: ./gradlew clean
-      - name: Build Debug APK with Verbose Logs
-        # إضافة --stacktrace و --info و --warning-mode all هي المفتاح لكشف الخطأ الحقيقي
-        script: |
-          ./gradlew assembleDebug --stacktrace --info --warning-mode all
+
+      - name: Build Debug APK
+        script: ./gradlew assembleDebug
+
     artifacts:
       - app/build/outputs/apk/debug/*.apk
+
     publishing:
       email:
         recipients:
