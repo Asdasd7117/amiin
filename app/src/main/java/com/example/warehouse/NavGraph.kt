@@ -48,7 +48,6 @@ fun MainNav() {
     val user = state.user!!
     val start = if (state.settings.show_dash_on_login) "dash" else "records"
 
-    // ✅ التحقق الصريح من role
     val roleText = user.role
     val isAdminCheck = roleText == "admin" || roleText.trim() == "admin"
 
@@ -57,7 +56,7 @@ fun MainNav() {
         bottomBar = {
             Surface(color = C.surface) {
                 Column {
-                    // شريط معلومات للتشخيص
+                    // شريط التشخيص
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -73,25 +72,19 @@ fun MainNav() {
                         )
                     }
 
+                    // ✅ الحل: بناء قائمة العناصر بشكل ديناميكي
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        // الرئيسية
                         MyNavItem(nav, "dash", "الرئيسية", Icons.Default.Home)
-
-                        // إجازة
                         MyNavItem(nav, "entry", "إجازة", Icons.Default.Add)
-
-                        // سجلاتي
                         MyNavItem(nav, "records", "سجلاتي", Icons.Default.List)
-
-                        // الأرصدة
                         MyNavItem(nav, "balance", "الأرصدة", Icons.Default.PieChart)
-
-                        // ✅ الإدارة - تظهر دائماً للمدير
+                        
+                        // ✅ إضافة تبويب الإدارة مباشرة بدون if
                         if (isAdminCheck) {
                             MyNavItem(nav, "admin", "إدارة", Icons.Default.Settings)
                         }
