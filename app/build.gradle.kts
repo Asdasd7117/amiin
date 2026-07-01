@@ -16,8 +16,8 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        buildConfigField("String", "SUPABASE_URL", "\"https://glfrwnzrhovojzixlubl.supabase.co\"")
-        buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdsZnJ3bnpyaG92b2p6aXhsdWJsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjczNzU2MSwiZXhwIjoyMDk4MzEzNTYxfQ.XrMw2zux4-FgefHv83_uUeTrZPke7bDZNFeRqxf8Feg\"")
+        buildConfigField("String", "SUPABASE_URL", "\"https://jpxnmjjdqisoeuinybvf.supabase.co\"")
+        buildConfigField("String", "SUPABASE_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpweG5tampkcWlzb2V1aW55YnZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NTE2MjQsImV4cCI6MjA5ODQyNzYyNH0.9Oqf-aQ9YKgqOt2QgxKr-yzovWUPQLFg6iREbiZDmd4\"")
     }
 
     buildFeatures {
