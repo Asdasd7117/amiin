@@ -196,10 +196,11 @@ fun EntryScreen(state: AppState, vm: MainViewModel, onDone: () -> Unit) {
         }
     }
 
+    // ✅ الإصلاح هنا: إجبار استخدام الأرقام الإنجليزية للتاريخ
     fun pickDate(onPicked: (String) -> Unit) {
         val cal = Calendar.getInstance()
         DatePickerDialog(ctx, { _, y, m, d ->
-            onPicked("%04d-%02d-%02d".format(y, m + 1, d))
+            onPicked(String.format(Locale.ENGLISH, "%04d-%02d-%02d", y, m + 1, d))
         }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
     }
 
