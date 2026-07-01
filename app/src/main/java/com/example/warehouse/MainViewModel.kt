@@ -1,8 +1,10 @@
 package com.example.warehouse
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -28,6 +30,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // 🔥 NEW: عرض أخطاء واضحة
     private fun formatError(e: Exception): String {
         val msg = e.message ?: "UNKNOWN_ERROR"
+        Log.e("MainViewModel", "Error: $msg", e)
         return when {
             msg.contains("JWT") -> "🔐 مشكلة صلاحيات السيرفر"
             msg.contains("network", true) -> "🌐 مشكلة اتصال بالإنترنت"
@@ -60,13 +63,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     return@launch
                 }
 
+                val employees = repo.getEmployees()
+                val leaves = repo.getLeaves()
+                val settings = repo.getSettings()
+                val notifications = repo.getNotifications(userId)
+
+                Log.d("MainViewModel", "Loaded: ${employees.size} employees, ${users.size} users, ${leaves.size} leaves")
+
                 _state.value = AppState(
                     user = user,
                     users = users,
-                    employees = repo.getEmployees(),
-                    leaves = repo.getLeaves(),
-                    settings = repo.getSettings(),
-                    notifications = repo.getNotifications(userId)
+                    employees = employees,
+                    leaves = leaves,
+                    settings = settings,
+                    notifications = notifications
                 )
 
             } catch (e: Exception) {
@@ -186,6 +196,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val userId = _state.value.user?.id ?: return
         viewModelScope.launch {
             try {
+                Log.d("MainViewModel", "Adding employee: $name, $phone")
+                
                 repo.addEmployee(
                     Employee(
                         id = "",
@@ -196,8 +208,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         container_days = 0.0
                     )
                 )
+                
+                // ✅ انتظار قصير للتأكد من حفظ البيانات في Supabase
+                delay(500)
+                
+                Log.d("MainViewModel", "Employee added, reloading data...")
                 loadAll(userId)
+                
             } catch (e: Exception) {
+                Log.e("MainViewModel", "Error adding employee", e)
                 _state.value = _state.value.copy(error = formatError(e))
             }
         }
@@ -208,6 +227,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 repo.updateEmployee(emp)
+                delay(500)
                 loadAll(userId)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = formatError(e))
@@ -220,6 +240,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 repo.deleteEmployee(id)
+                delay(500)
                 loadAll(userId)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = formatError(e))
@@ -246,6 +267,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
 
                 repo.addUser(user)
+                delay(500)
                 loadAll(currentUserId)
 
             } catch (e: Exception) {
@@ -259,6 +281,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 repo.deleteUser(id)
+                delay(500)
                 loadAll(userId)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = formatError(e))
@@ -291,6 +314,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
 
+                delay(500)
                 loadAll(userId)
 
             } catch (e: Exception) {
