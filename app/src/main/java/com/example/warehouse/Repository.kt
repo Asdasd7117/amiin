@@ -57,12 +57,12 @@ class Repository(private val ctx: Context) {
     }
 
     // ═══════════════════════════════════════
-    //  Session (تذكرني)
+    //  Session (تذكرني) - ✅ الإصلاح هنا
     // ═══════════════════════════════════════
     suspend fun saveSession(userId: String, remember: Boolean) {
-        ctx.ds.edit {
-            this[stringPreferencesKey("user_id")] = userId
-            this[booleanPreferencesKey("remember")] = remember
+        ctx.ds.edit { prefs ->
+            prefs[stringPreferencesKey("user_id")] = userId
+            prefs[booleanPreferencesKey("remember")] = remember
         }
     }
 
@@ -74,7 +74,9 @@ class Repository(private val ctx: Context) {
     }
 
     suspend fun clearSession() {
-        ctx.ds.edit { clear() }
+        ctx.ds.edit { prefs ->
+            prefs.clear()
+        }
     }
 
     // ═══════════════════════════════════════
@@ -116,7 +118,6 @@ class Repository(private val ctx: Context) {
     }
 
     suspend fun addEmployee(emp: Employee): Employee {
-        // ✅ استخدام select() بعد insert للحصول على البيانات مع ID
         val result = client.postgrest.from("employees")
             .insert(emp) {
                 select()
