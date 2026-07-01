@@ -192,31 +192,48 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ✅ التحديث: إضافة موظف مع رسائل خطأ واضحة
     fun addEmployee(name: String, phone: String) {
-        val userId = _state.value.user?.id ?: return
+        val userId = _state.value.user?.id ?: run {
+            _state.value = _state.value.copy(error = "❌ المستخدم غير مسجل دخول")
+            return
+        }
+        
         viewModelScope.launch {
             try {
-                Log.d("MainViewModel", "Adding employee: $name, $phone")
+                Log.d("MainViewModel", "➕ Adding employee: $name, $phone")
                 
-                repo.addEmployee(
-                    Employee(
-                        id = "",
-                        name = name,
-                        phone = phone,
-                        annual = 0.0,
-                        allowance = 0.0,
-                        container_days = 0.0
-                    )
+                // التحقق من البيانات
+                if (name.isBlank()) {
+                    _state.value = _state.value.copy(error = "❌ الاسم مطلوب")
+                    return@launch
+                }
+                
+                val newEmp = Employee(
+                    id = "",
+                    name = name.trim(),
+                    phone = phone.trim(),
+                    annual = 0.0,
+                    allowance = 0.0,
+                    container_days = 0.0
                 )
                 
-                // ✅ انتظار قصير للتأكد من حفظ البيانات في Supabase
-                delay(500)
+                // إضافة الموظف
+                val result = repo.addEmployee(newEmp)
+                Log.d("MainViewModel", "✅ Employee added with ID: ${result.id}")
                 
-                Log.d("MainViewModel", "Employee added, reloading data...")
+                // انتظار قصير للتأكد من حفظ البيانات
+                delay(1000)
+                
+                // إعادة تحميل البيانات
+                Log.d("MainViewModel", "🔄 Reloading data...")
                 loadAll(userId)
                 
+                // مسح رسالة الخطأ إذا نجحت العملية
+                _state.value = _state.value.copy(error = null)
+                
             } catch (e: Exception) {
-                Log.e("MainViewModel", "Error adding employee", e)
+                Log.e("MainViewModel", "❌ Error adding employee", e)
                 _state.value = _state.value.copy(error = formatError(e))
             }
         }
@@ -227,7 +244,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 repo.updateEmployee(emp)
-                delay(500)
+                delay(1000)
                 loadAll(userId)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = formatError(e))
@@ -240,7 +257,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 repo.deleteEmployee(id)
-                delay(500)
+                delay(1000)
                 loadAll(userId)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = formatError(e))
@@ -267,7 +284,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
 
                 repo.addUser(user)
-                delay(500)
+                delay(1000)
                 loadAll(currentUserId)
 
             } catch (e: Exception) {
@@ -281,7 +298,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 repo.deleteUser(id)
-                delay(500)
+                delay(1000)
                 loadAll(userId)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(error = formatError(e))
@@ -314,7 +331,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
 
-                delay(500)
+                delay(1000)
                 loadAll(userId)
 
             } catch (e: Exception) {
