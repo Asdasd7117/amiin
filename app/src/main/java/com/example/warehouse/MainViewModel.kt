@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
+import java.util.UUID
 
 data class AppState(
     val user: User? = null,
@@ -37,6 +38,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             msg.contains("JSON") -> "📦 خطأ في البيانات من السيرفر"
             msg.contains("duplicate") -> "⚠️ بيانات مكررة"
             msg.contains("not found", true) -> "❌ بيانات غير موجودة"
+            msg.contains("invalid input syntax for type uuid") -> "⚠️ مشكلة في تنسيق المعرف"
             else -> "⚠️ خطأ: $msg"
         }
     }
@@ -168,7 +170,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 val leave = Leave(
-                    id = "",
+                    id = UUID.randomUUID().toString(),
                     emp_id = empId,
                     employeeName = emp.name,
                     from = from,
@@ -192,7 +194,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ✅ التحديث: إضافة موظف مع رسائل خطأ واضحة
+    // ✅ التحديث: إضافة موظف مع توليد UUID صحيح
     fun addEmployee(name: String, phone: String) {
         val userId = _state.value.user?.id ?: run {
             _state.value = _state.value.copy(error = "❌ المستخدم غير مسجل دخول")
@@ -210,7 +212,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 
                 val newEmp = Employee(
-                    id = "",
+                    id = UUID.randomUUID().toString(), // ✅ توليد UUID صحيح
                     name = name.trim(),
                     phone = phone.trim(),
                     annual = 0.0,
@@ -273,7 +275,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val hash = repo.hashPassword(password, salt)
 
                 val user = User(
-                    id = "",
+                    id = UUID.randomUUID().toString(), // ✅ توليد UUID صحيح
                     name = name,
                     email = email.trim().lowercase(),
                     role = role,
@@ -321,7 +323,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     if (empUser != null) {
                         repo.addNotification(
                             NotificationItem(
-                                id = "",
+                                id = UUID.randomUUID().toString(), // ✅ توليد UUID صحيح
                                 user_id = empUser.id,
                                 title = if (status == "approved") "✅ تم قبول الإجازة" else "❌ تم رفض الإجازة",
                                 message = notes.ifEmpty { "تم مراجعة طلبك" },
