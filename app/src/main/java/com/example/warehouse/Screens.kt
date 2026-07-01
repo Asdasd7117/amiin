@@ -673,7 +673,7 @@ fun ReviewDialog(leave: Leave, onDismiss: () -> Unit, onReview: (String, String)
     var notes by remember { mutableStateOf(leave.manager_notes) }
 
     AlertDialog(onDismissRequest = onDismiss, containerColor = C.surface,
-        title = { Text("📝 مراجعة طلب ${leave.emp_name}", color = C.text) },
+        title = { Text("📝 مراجعة طلب ${leave.employeeName}", color = C.text) },
         text = {
             Column {
                 Text("📅 ${leave.from} → ${leave.to}", color = C.text2)
@@ -743,7 +743,7 @@ fun LeaveCard(leave: Leave, actions: @Composable (() -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).padding(12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(leave.emp_name, fontWeight = FontWeight.Bold, color = C.text)
+                Text(leave.employeeName, fontWeight = FontWeight.Bold, color = C.text)
                 Text("${leave.from} → ${leave.to}", fontSize = 12.sp, color = C.text2)
             }
             Box(Modifier.clip(RoundedCornerShape(8.dp)).background(statusColor.copy(alpha = 0.15f))
@@ -787,7 +787,7 @@ fun CalendarStrip(leaves: List<Leave>) {
                 Text(daysAr[d.dayOfWeek.value % 7], fontSize = 10.sp, color = if (isToday) Color.White else C.text2)
                 Text("${d.dayOfMonth}", fontSize = 18.sp, fontWeight = FontWeight.Bold,
                     color = if (isToday) Color.White else C.text)
-                Text(bookedLeave?.emp_name?.split(" ")?.firstOrNull() ?: "", fontSize = 9.sp, color = C.ok, maxLines = 1)
+                Text(bookedLeave?.employeeName?.split(" ")?.firstOrNull() ?: "", fontSize = 9.sp, color = C.ok, maxLines = 1)
             }
         }
     }
