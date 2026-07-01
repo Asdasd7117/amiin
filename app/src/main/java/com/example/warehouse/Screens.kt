@@ -374,6 +374,7 @@ fun BalanceScreen(state: AppState) {
 
 @Composable
 fun AdminScreen(state: AppState, vm: MainViewModel) {
+    val ctx = LocalContext.current
     var tab by remember { mutableStateOf(0) }
     var showAddEmp by remember { mutableStateOf(false) }
     var showAddUser by remember { mutableStateOf(false) }
@@ -381,13 +382,56 @@ fun AdminScreen(state: AppState, vm: MainViewModel) {
     Scaffold(
         containerColor = C.bg,
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { if (tab == 0) showAddEmp = true else showAddUser = true },
-                containerColor = C.primary
-            ) { Icon(Icons.Default.Add, null) }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // ✅ زر التحديث
+                FloatingActionButton(
+                    onClick = { 
+                        val userId = state.user?.id ?: return@FloatingActionButton
+                        vm.loadAll(userId)
+                        Toast.makeText(ctx, "🔄 تم تحديث البيانات", Toast.LENGTH_SHORT).show()
+                    },
+                    containerColor = C.acc,
+                    modifier = Modifier.size(50.dp)
+                ) { Icon(Icons.Default.Refresh, "تحديث") }
+                
+                Spacer(Modifier.height(10.dp))
+                
+                // زر الإضافة
+                FloatingActionButton(
+                    onClick = { if (tab == 0) showAddEmp = true else showAddUser = true },
+                    containerColor = C.primary
+                ) { Icon(Icons.Default.Add, null) }
+            }
         }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
+            // ✅ عرض الأخطاء
+            if (state.error != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(C.err.copy(alpha = 0.2f))
+                        .padding(12.dp)
+                ) {
+                    Text("❌ ${state.error}", color = C.err, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+            
+            // ✅ عرض عدد الموظفين
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(C.surface)
+                    .padding(8.dp)
+            ) {
+                Text(
+                    "📊 عدد الموظفين: ${state.employees.size} | عدد المستخدمين: ${state.users.size}",
+                    color = C.text2,
+                    fontSize = 12.sp,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+            
             TabRow(tab, containerColor = C.surface) {
                 Tab(tab == 0, onClick = { tab = 0 }) { Text("الموظفون", Modifier.padding(14.dp)) }
                 Tab(tab == 1, onClick = { tab = 1 }) { Text("المستخدمون", Modifier.padding(14.dp)) }
@@ -407,7 +451,11 @@ fun AdminScreen(state: AppState, vm: MainViewModel) {
     if (showAddEmp) {
         AddEmployeeDialog(
             onDismiss = { showAddEmp = false },
-            onAdd = { name, phone -> vm.addEmployee(name, phone); showAddEmp = false }
+            onAdd = { name, phone ->
+                vm.addEmployee(name, phone)
+                showAddEmp = false
+                Toast.makeText(ctx, "✅ تم إضافة الموظف: $name", Toast.LENGTH_SHORT).show()
+            }
         )
     }
     if (showAddUser) {
@@ -415,7 +463,9 @@ fun AdminScreen(state: AppState, vm: MainViewModel) {
             emps = state.employees,
             onDismiss = { showAddUser = false },
             onAdd = { name, email, pass, role, staffId ->
-                vm.addUser(name, email, pass, role, staffId); showAddUser = false
+                vm.addUser(name, email, pass, role, staffId)
+                showAddUser = false
+                Toast.makeText(ctx, "✅ تم إضافة المستخدم: $name", Toast.LENGTH_SHORT).show()
             }
         )
     }
@@ -423,6 +473,16 @@ fun AdminScreen(state: AppState, vm: MainViewModel) {
 
 @Composable
 fun EmployeesTab(emps: List<Employee>, vm: MainViewModel) {
+    if (emps.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("📭 لا يوجد موظفون", color = C.text2, fontSize = 16.sp)
+                Text("اضغط + لإضافة موظف جديد", color = C.text2, fontSize = 12.sp)
+            }
+        }
+        return
+    }
+    
     LazyColumn(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(emps) { emp ->
             var showEdit by remember { mutableStateOf(false) }
@@ -472,7 +532,9 @@ fun UsersTab(users: List<User>, emps: List<Employee>, vm: MainViewModel) {
                             onClick = { sendCredentialsWA(emp.phone, u.email, emp.name, ctx) },
                             colors = ButtonDefaults.buttonColors(containerColor = C.wa),
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("💬 إرسال بيانات الدخول عبر واتساب") }
+                        ) {
+                            Text("💬 إرسال بيانات الدخول عبر واتساب")
+                        }
                     }
                 }
             }
@@ -493,16 +555,13 @@ fun LeavesReviewTab(leaves: List<Leave>, vm: MainViewModel) {
             var showReview by remember { mutableStateOf(false) }
             LeaveCard(leave) {
                 Spacer(Modifier.height(8.dp))
-                Button(
-                    onClick = { showReview = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = C.primary)
-                ) { Text("📝 مراجعة") }
+                Button(onClick = { showReview = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = C.primary)) {
+                    Text("📝 مراجعة")
+                }
             }
-            if (showReview) {
-                ReviewDialog(leave, { showReview = false }, { status, notes ->
-                    vm.reviewLeave(leave.id, status, notes); showReview = false
-                })
-            }
+            if (showReview) ReviewDialog(leave, { showReview = false },
+                { status, notes -> vm.reviewLeave(leave.id, status, notes); showReview = false })
         }
     }
 }
@@ -510,17 +569,12 @@ fun LeavesReviewTab(leaves: List<Leave>, vm: MainViewModel) {
 @Composable
 fun UpcomingTab(leaves: List<Leave>) {
     val today = LocalDate.now().toString()
-    val upcoming = leaves.filter {
-        it.status == "approved" && it.from >= today
-    }.sortedBy { it.from }
+    val upcoming = leaves.filter { it.status == "approved" && it.from >= today }.sortedBy { it.from }
 
     LazyColumn(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { Text("📅 الإجازات القادمة (${upcoming.size})", color = C.text2, fontSize = 13.sp) }
-        if (upcoming.isEmpty()) {
-            item { EmptyBox("لا توجد إجازات قادمة") }
-        } else {
-            items(upcoming) { LeaveCard(it) }
-        }
+        if (upcoming.isEmpty()) item { EmptyBox("لا توجد إجازات قادمة") }
+        else items(upcoming) { LeaveCard(it) }
     }
 }
 
@@ -528,9 +582,7 @@ fun UpcomingTab(leaves: List<Leave>) {
 fun AddEmployeeDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = C.surface,
+    AlertDialog(onDismissRequest = onDismiss, containerColor = C.surface,
         title = { Text("➕ إضافة موظف", color = C.text) },
         text = {
             Column {
@@ -540,11 +592,11 @@ fun AddEmployeeDialog(onDismiss: () -> Unit, onAdd: (String, String) -> Unit) {
             }
         },
         confirmButton = {
-            Button(onClick = { onAdd(name, phone) },
-                colors = ButtonDefaults.buttonColors(containerColor = C.primary)) { Text("إضافة") }
+            Button(onClick = { onAdd(name, phone) }, colors = ButtonDefaults.buttonColors(containerColor = C.primary)) {
+                Text("إضافة")
+            }
         },
-        dismissButton = { TextButton(onDismiss) { Text("إلغاء") } }
-    )
+        dismissButton = { TextButton(onDismiss) { Text("إلغاء") } })
 }
 
 @Composable
@@ -555,9 +607,7 @@ fun EditEmployeeDialog(emp: Employee, onDismiss: () -> Unit, onSave: (Employee) 
     var allowance by remember { mutableStateOf(emp.allowance.toString()) }
     var cntDays by remember { mutableStateOf(emp.container_days.toString()) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = C.surface,
+    AlertDialog(onDismissRequest = onDismiss, containerColor = C.surface,
         title = { Text("✏️ تعديل: ${emp.name}", color = C.text) },
         text = {
             Column {
@@ -570,24 +620,18 @@ fun EditEmployeeDialog(emp: Employee, onDismiss: () -> Unit, onSave: (Employee) 
         },
         confirmButton = {
             Button(onClick = {
-                onSave(emp.copy(
-                    name = name, phone = phone,
+                onSave(emp.copy(name = name, phone = phone,
                     annual = annual.toDoubleOrNull() ?: emp.annual,
                     allowance = allowance.toDoubleOrNull() ?: emp.allowance,
-                    container_days = cntDays.toDoubleOrNull() ?: emp.container_days
-                ))
+                    container_days = cntDays.toDoubleOrNull() ?: emp.container_days))
             }, colors = ButtonDefaults.buttonColors(containerColor = C.primary)) { Text("حفظ") }
         },
-        dismissButton = { TextButton(onDismiss) { Text("إلغاء") } }
-    )
+        dismissButton = { TextButton(onDismiss) { Text("إلغاء") } })
 }
 
 @Composable
-fun AddUserDialog(
-    emps: List<Employee>,
-    onDismiss: () -> Unit,
-    onAdd: (String, String, String, String, String?) -> Unit
-) {
+fun AddUserDialog(emps: List<Employee>, onDismiss: () -> Unit,
+                  onAdd: (String, String, String, String, String?) -> Unit) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
@@ -595,9 +639,7 @@ fun AddUserDialog(
     var staffId by remember { mutableStateOf<String?>(null) }
     var expanded by remember { mutableStateOf(false) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = C.surface,
+    AlertDialog(onDismissRequest = onDismiss, containerColor = C.surface,
         title = { Text("➕ إضافة مستخدم", color = C.text) },
         text = {
             Column {
@@ -610,18 +652,13 @@ fun AddUserDialog(
                 }
                 if (role == "employee") {
                     ExposedDropdownMenuBox(expanded, { expanded = it }) {
-                        OutlinedTextField(
-                            value = staffId?.let { id -> emps.firstOrNull { it.id == id }?.name } ?: "اختر موظف",
-                            onValueChange = {}, readOnly = true,
-                            label = { Text("ربط بـ") },
+                        OutlinedTextField(value = staffId?.let { id -> emps.firstOrNull { it.id == id }?.name } ?: "اختر موظف",
+                            onValueChange = {}, readOnly = true, label = { Text("ربط بـ") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
-                        )
+                            modifier = Modifier.menuAnchor().fillMaxWidth())
                         ExposedDropdownMenu(expanded, { expanded = false }) {
                             emps.forEach { e ->
-                                DropdownMenuItem({ Text(e.name) }, onClick = {
-                                    staffId = e.id; expanded = false
-                                })
+                                DropdownMenuItem({ Text(e.name) }, onClick = { staffId = e.id; expanded = false })
                             }
                         }
                     }
@@ -632,18 +669,15 @@ fun AddUserDialog(
             Button(onClick = { onAdd(name, email, pass, role, staffId) },
                 colors = ButtonDefaults.buttonColors(containerColor = C.primary)) { Text("إضافة") }
         },
-        dismissButton = { TextButton(onDismiss) { Text("إلغاء") } }
-    )
+        dismissButton = { TextButton(onDismiss) { Text("إلغاء") } })
 }
 
 @Composable
 fun ReviewDialog(leave: Leave, onDismiss: () -> Unit, onReview: (String, String) -> Unit) {
     var notes by remember { mutableStateOf(leave.manager_notes) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = C.surface,
-        title = { Text("📝 مراجعة طلب ${leave.employeeName}", color = C.text) },
+    AlertDialog(onDismissRequest = onDismiss, containerColor = C.surface,
+        title = { Text("📝 مراجعة طلب ${leave.emp_name ?: "موظف"}", color = C.text) },
         text = {
             Column {
                 Text("📅 ${leave.from} → ${leave.to}", color = C.text2)
@@ -655,29 +689,19 @@ fun ReviewDialog(leave: Leave, onDismiss: () -> Unit, onReview: (String, String)
         },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Button(
-                    onClick = { onReview("approved", notes) },
-                    colors = ButtonDefaults.buttonColors(containerColor = C.ok)
-                ) { Text("✅ قبول") }
-                Button(
-                    onClick = { onReview("rejected", notes) },
-                    colors = ButtonDefaults.buttonColors(containerColor = C.err)
-                ) { Text("❌ رفض") }
+                Button(onClick = { onReview("approved", notes) },
+                    colors = ButtonDefaults.buttonColors(containerColor = C.ok)) { Text("✅ قبول") }
+                Button(onClick = { onReview("rejected", notes) },
+                    colors = ButtonDefaults.buttonColors(containerColor = C.err)) { Text("❌ رفض") }
             }
         },
-        dismissButton = { TextButton(onDismiss) { Text("إلغاء") } }
-    )
+        dismissButton = { TextButton(onDismiss) { Text("إلغاء") } })
 }
 
 @Composable
 fun StatBox(num: String, label: String, color: Color, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.height(80.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(C.surface)
-            .padding(10.dp),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = modifier.height(80.dp).clip(RoundedCornerShape(14.dp)).background(C.surface).padding(10.dp),
+        contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(num, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = color)
             Text(label, fontSize = 11.sp, color = C.text2)
@@ -687,13 +711,8 @@ fun StatBox(num: String, label: String, color: Color, modifier: Modifier = Modif
 
 @Composable
 fun StatChip(num: String, label: String, color: Color, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.height(60.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(C.surface2)
-            .padding(8.dp),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = modifier.height(60.dp).clip(RoundedCornerShape(12.dp)).background(C.surface2).padding(8.dp),
+        contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(num, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = color)
             Text(label, fontSize = 10.sp, color = C.text2)
@@ -703,22 +722,15 @@ fun StatChip(num: String, label: String, color: Color, modifier: Modifier = Modi
 
 @Composable
 fun EmptyBox(msg: String) {
-    Box(
-        Modifier.fillMaxWidth().height(70.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(C.surface),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(Modifier.fillMaxWidth().height(70.dp).clip(RoundedCornerShape(12.dp)).background(C.surface),
+        contentAlignment = Alignment.Center) {
         Text(msg, color = C.text2, fontSize = 13.sp)
     }
 }
 
 @Composable
 fun BalanceRow(label: String, value: String, color: Color) {
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontSize = 13.sp, color = C.text2)
         Text(value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color)
     }
@@ -732,22 +744,16 @@ fun LeaveCard(leave: Leave, actions: @Composable (() -> Unit)? = null) {
         else -> "⏰ معلق" to C.war
     }
 
-    Column(
-        Modifier.fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(C.surface)
-            .padding(12.dp)
-    ) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(C.surface).padding(12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(leave.employeeName, fontWeight = FontWeight.Bold, color = C.text)
+                Text(leave.emp_name ?: "موظف", fontWeight = FontWeight.Bold, color = C.text)
                 Text("${leave.from} → ${leave.to}", fontSize = 12.sp, color = C.text2)
             }
-            Box(
-                Modifier.clip(RoundedCornerShape(8.dp))
-                    .background(statusColor.copy(alpha = 0.15f))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) { Text(statusText, color = statusColor, fontSize = 12.sp) }
+            Box(Modifier.clip(RoundedCornerShape(8.dp)).background(statusColor.copy(alpha = 0.15f))
+                .padding(horizontal = 10.dp, vertical = 4.dp)) {
+                Text(statusText, color = statusColor, fontSize = 12.sp)
+            }
         }
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -756,9 +762,7 @@ fun LeaveCard(leave: Leave, actions: @Composable (() -> Unit)? = null) {
             if (leave.half_day) Text("🕐 نصف يوم", fontSize = 12.sp, color = C.p)
         }
         if (leave.notes.isNotEmpty()) Text("📝 ${leave.notes}", fontSize = 12.sp, color = C.text2)
-        if (leave.manager_notes.isNotEmpty()) {
-            Text("💬 ${leave.manager_notes}", fontSize = 12.sp, color = C.acc)
-        }
+        if (leave.manager_notes.isNotEmpty()) Text("💬 ${leave.manager_notes}", fontSize = 12.sp, color = C.acc)
         actions?.invoke()
     }
 }
@@ -768,70 +772,35 @@ fun CalendarStrip(leaves: List<Leave>) {
     val today = LocalDate.now()
     val daysAr = listOf("أحد","إثن","ثلا","أرب","خمي","جمع","سبت")
 
-    Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
+    Row(modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for (i in 0 until 14) {
             val d = today.plusDays(i.toLong())
             val ds = d.toString()
             val isFri = d.dayOfWeek == DayOfWeek.FRIDAY
             val isToday = i == 0
-            
-            // إصلاح الخطأ: تحويل البحث لـ Boolean صريح
-            val foundLeave = if (!isFri) leaves.firstOrNull { 
-                it.status != "rejected" && ds >= it.from && ds <= it.to 
-            } else null
-            val isBooked = foundLeave != null
-            
+            val bookedLeave = if (!isFri) leaves.firstOrNull { it.status != "rejected" && ds >= it.from && ds <= it.to } else null
             val bgColor = when {
                 isToday -> C.primary
                 isFri -> C.surface2
-                isBooked -> C.ok.copy(alpha = 0.25f)
+                bookedLeave != null -> C.ok.copy(alpha = 0.25f)
                 else -> C.surface
             }
-            Column(
-                modifier = Modifier.width(52.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(bgColor)
-                    .padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(daysAr[d.dayOfWeek.value % 7], fontSize = 10.sp,
-                    color = if (isToday) Color.White else C.text2)
+            Column(modifier = Modifier.width(52.dp).clip(RoundedCornerShape(12.dp)).background(bgColor).padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(daysAr[d.dayOfWeek.value % 7], fontSize = 10.sp, color = if (isToday) Color.White else C.text2)
                 Text("${d.dayOfMonth}", fontSize = 18.sp, fontWeight = FontWeight.Bold,
                     color = if (isToday) Color.White else C.text)
-                Text(
-                    foundLeave?.employeeName?.split(" ")?.firstOrNull() ?: "",
-                    fontSize = 9.sp, color = C.ok,
-                    maxLines = 1
-                )
+                Text(bookedLeave?.emp_name?.split(" ")?.firstOrNull() ?: "", fontSize = 9.sp, color = C.ok, maxLines = 1)
             }
         }
     }
 }
 
 fun sendCredentialsWA(phone: String, email: String, name: String, ctx: android.content.Context) {
-    val msg = """
-        🏭 إجازات المخازن
-        
-        مرحباً $name،
-        تم إنشاء حسابك بنجاح ✅
-        
-        📧 البريد: $email
-        🔑 كلمة المرور: (اسأل المدير)
-        
-        ⚠️ عند أول دخول ستُجبر على تغيير كلمة المرور.
-    """.trimIndent()
-
-    val cleanPhone = phone.replace(Regex("[^0-9]"), "")
-        .let { if (it.startsWith("0")) "20$it" else it }
-
+    val msg = "🏭 إجازات المخازن\n\nمرحباً $name،\nتم إنشاء حسابك بنجاح ✅\n\n📧 البريد: $email\n🔑 كلمة المرور: (اسأل المدير)\n\n⚠️ عند أول دخول ستُجبر على تغيير كلمة المرور."
+    val cleanPhone = phone.replace(Regex("[^0-9]"), "").let { if (it.startsWith("0")) "20$it" else it }
     val url = "https://wa.me/$cleanPhone?text=${Uri.encode(msg)}"
     val intent = Intent(Intent.ACTION_VIEW).apply { data = Uri.parse(url) }
-    try {
-        ctx.startActivity(intent)
-    } catch (e: Exception) {
-        Toast.makeText(ctx, "واتساب غير مثبت", Toast.LENGTH_SHORT).show()
-    }
+    try { ctx.startActivity(intent) } catch (e: Exception) { Toast.makeText(ctx, "واتساب غير مثبت", Toast.LENGTH_SHORT).show() }
 }
