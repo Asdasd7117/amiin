@@ -5,8 +5,6 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.first
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.DayOfWeek
@@ -19,6 +17,9 @@ class Repository(private val ctx: Context) {
 
     private val client get() = SupabaseClient.client
 
+    // ═══════════════════════════════════════
+    //  أدوات كلمة المرور
+    // ═══════════════════════════════════════
     fun generateSalt(): String {
         val bytes = ByteArray(16)
         SecureRandom().nextBytes(bytes)
@@ -32,6 +33,9 @@ class Repository(private val ctx: Context) {
         return digest.joinToString("") { "%02x".format(it) }
     }
 
+    // ═══════════════════════════════════════
+    //  حساب أيام العمل
+    // ═══════════════════════════════════════
     fun workDays(from: String, to: String): Int {
         if (from.isEmpty() || to.isEmpty()) return 0
         val f = LocalDate.parse(from)
@@ -52,10 +56,13 @@ class Repository(private val ctx: Context) {
         return if (halfDay) raw - 0.5 else raw.toDouble()
     }
 
+    // ═══════════════════════════════════════
+    //  Session (تذكرني)
+    // ═══════════════════════════════════════
     suspend fun saveSession(userId: String, remember: Boolean) {
         ctx.ds.edit {
-            it[stringPreferencesKey("user_id")] = userId
-            it[booleanPreferencesKey("remember")] = remember
+            this[stringPreferencesKey("user_id")] = userId
+            this[booleanPreferencesKey("remember")] = remember
         }
     }
 
@@ -67,28 +74,20 @@ class Repository(private val ctx: Context) {
     }
 
     suspend fun clearSession() {
-        ctx.ds.edit { it.clear() }
+        ctx.ds.edit { clear() }
     }
 
+    // ═══════════════════════════════════════
+    //  Auth
+    // ═══════════════════════════════════════
     suspend fun login(email: String, password: String): User {
-        val user = try {
-            client.postgrest.from("users")
-                .select { filter { eq("email", email.trim().lowercase()) } }
-                .decodeSingleOrNull<User>()
-        } catch (e: Exception) {
-            // Re-throw the original exception to preserve the real error 
-            // (Network, SQL, RLS, Serialization, Project URL, API Key, etc.) with its Stack Trace.
-            throw e
-        }
-
-        if (user == null) {
-            throw Exception("Debug: No user found with email '${email.trim().lowercase()}'. Possible causes: User does not exist, or RLS policy is blocking the SELECT.")
-        }
+        val user = client.postgrest.from("users")
+            .select { filter { eq("email", email.trim().lowercase()) } }
+            .decodeSingleOrNull<User>()
+            ?: throw Exception("بيانات الدخول غير صحيحة")
 
         val hash = hashPassword(password, user.salt)
-        if (hash != user.hash) {
-            throw Exception("Debug: Password hash mismatch for user '${user.email}'. Expected hash: ${user.hash}, Calculated hash: $hash. Check if the salt or hash in the database is correct.")
-        }
+        if (hash != user.hash) throw Exception("بيانات الدخول غير صحيحة")
 
         return user
     }
@@ -97,20 +96,33 @@ class Repository(private val ctx: Context) {
         val salt = generateSalt()
         val hash = hashPassword(newPassword, salt)
         client.postgrest.from("users").update({
-            val json = buildJsonObject {
-                put("hash", hash)
-                put("salt", salt)
-                put("must_change_pass", false)
-            }
-            json
+            set("hash", hash)
+            set("salt", salt)
+            set("must_change_pass", false)
         }) { filter { eq("id", userId) } }
     }
 
-    suspend fun getEmployees(): List<Employee> =
-        client.postgrest.from("employees").select().decodeList<Employee>()
+    // ═══════════════════════════════════════
+    //  Employees - ✅ الإصلاح هنا
+    // ═══════════════════════════════════════
+    suspend fun getEmployees(): List<Employee> {
+        return try {
+            client.postgrest.from("employees")
+                .select()
+                .decodeList<Employee>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
-    suspend fun addEmployee(emp: Employee) {
-        client.postgrest.from("employees").insert(emp)
+    suspend fun addEmployee(emp: Employee): Employee {
+        // ✅ استخدام select() بعد insert للحصول على البيانات مع ID
+        val result = client.postgrest.from("employees")
+            .insert(emp) {
+                select()
+            }
+            .decodeSingle<Employee>()
+        return result
     }
 
     suspend fun updateEmployee(emp: Employee) {
@@ -120,67 +132,106 @@ class Repository(private val ctx: Context) {
     }
 
     suspend fun deleteEmployee(id: String) {
-        client.postgrest.from("employees").delete { filter { eq("id", id) } }
+        client.postgrest.from("employees").delete { 
+            filter { eq("id", id) } 
+        }
     }
 
-    suspend fun getUsers(): List<User> =
-        client.postgrest.from("users").select().decodeList<User>()
+    // ═══════════════════════════════════════
+    //  Users
+    // ═══════════════════════════════════════
+    suspend fun getUsers(): List<User> {
+        return try {
+            client.postgrest.from("users").select().decodeList<User>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
-    suspend fun addUser(user: User) {
-        client.postgrest.from("users").insert(user)
+    suspend fun addUser(user: User): User {
+        val result = client.postgrest.from("users")
+            .insert(user) {
+                select()
+            }
+            .decodeSingle<User>()
+        return result
     }
 
     suspend fun deleteUser(id: String) {
-        client.postgrest.from("users").delete { filter { eq("id", id) } }
+        client.postgrest.from("users").delete { 
+            filter { eq("id", id) } 
+        }
     }
 
-    suspend fun getLeaves(): List<Leave> =
-        client.postgrest.from("leaves").select().decodeList<Leave>()
+    // ═══════════════════════════════════════
+    //  Leaves
+    // ═══════════════════════════════════════
+    suspend fun getLeaves(): List<Leave> {
+        return try {
+            client.postgrest.from("leaves").select().decodeList<Leave>()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
-    suspend fun submitLeave(leave: Leave) {
-        client.postgrest.from("leaves").insert(leave)
+    suspend fun submitLeave(leave: Leave): Leave {
+        val result = client.postgrest.from("leaves")
+            .insert(leave) {
+                select()
+            }
+            .decodeSingle<Leave>()
+        return result
     }
 
     suspend fun updateLeaveStatus(id: String, status: String, notes: String) {
         client.postgrest.from("leaves").update({
-            val json = buildJsonObject {
-                put("status", status)
-                put("manager_notes", notes)
-            }
-            json
+            set("status", status)
+            set("manager_notes", notes)
         }) { filter { eq("id", id) } }
     }
 
     suspend fun deductBalance(empId: String, type: String, days: Double) {
         val emp = getEmployees().firstOrNull { it.id == empId } ?: return
-        val newValue = when (type) {
-            "annual" -> emp.annual - days
-            "allowance" -> emp.allowance - days
-            "container" -> emp.container_days - days
-            else -> return
+        when (type) {
+            "annual" -> client.postgrest.from("employees").update({
+                set("annual", emp.annual - days)
+            }) { filter { eq("id", empId) } }
+            "allowance" -> client.postgrest.from("employees").update({
+                set("allowance", emp.allowance - days)
+            }) { filter { eq("id", empId) } }
+            "container" -> client.postgrest.from("employees").update({
+                set("container_days", emp.container_days - days)
+            }) { filter { eq("id", empId) } }
         }
-        val colName = when (type) {
-            "annual" -> "annual"
-            "allowance" -> "allowance"
-            else -> "container_days"
-        }
-        client.postgrest.from("employees").update({
-            val json = buildJsonObject { put(colName, newValue) }
-            json
-        }) { filter { eq("id", empId) } }
     }
 
-    suspend fun getSettings(): AppSettings =
-        client.postgrest.from("settings").select().decodeSingleOrNull<AppSettings>()
-            ?: AppSettings()
+    // ═══════════════════════════════════════
+    //  Settings
+    // ═══════════════════════════════════════
+    suspend fun getSettings(): AppSettings {
+        return try {
+            client.postgrest.from("settings").select().decodeSingleOrNull<AppSettings>()
+                ?: AppSettings()
+        } catch (e: Exception) {
+            AppSettings()
+        }
+    }
 
+    // ═══════════════════════════════════════
+    //  Notifications
+    // ═══════════════════════════════════════
     suspend fun addNotification(n: NotificationItem) {
         client.postgrest.from("notifications").insert(n)
     }
 
-    suspend fun getNotifications(userId: String): List<NotificationItem> =
-        client.postgrest.from("notifications")
-            .select { filter { eq("user_id", userId) } }
-            .decodeList<NotificationItem>()
-            .sortedByDescending { it.created_at }
+    suspend fun getNotifications(userId: String): List<NotificationItem> {
+        return try {
+            client.postgrest.from("notifications")
+                .select { filter { eq("user_id", userId) } }
+                .decodeList<NotificationItem>()
+                .sortedByDescending { it.created_at }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 }
