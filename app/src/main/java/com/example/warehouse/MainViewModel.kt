@@ -267,7 +267,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun addUser(name: String, email: String, password: String, role: String, staffId: String?) {
+    // ✅ التحديث: إضافة حقل phone في addUser
+    fun addUser(name: String, email: String, phone: String, password: String, role: String, staffId: String?) {
         val currentUserId = _state.value.user?.id ?: return
         viewModelScope.launch {
             try {
@@ -278,6 +279,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     id = UUID.randomUUID().toString(), // ✅ توليد UUID صحيح
                     name = name,
                     email = email.trim().lowercase(),
+                    phone = phone.trim(),  // ✅ إضافة رقم الهاتف
                     role = role,
                     staff_id = staffId,
                     hash = hash,
