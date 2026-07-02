@@ -9,6 +9,7 @@ data class User(
     val id: String = UUID.randomUUID().toString(),
     val email: String = "",
     val name: String = "",
+    val phone: String = "",  // ✅ إضافة حقل رقم الهاتف
     val role: String = "employee",           // admin أو employee
     val staff_id: String? = null,            // ربط بـ Employee
     val hash: String = "",
@@ -33,9 +34,9 @@ data class Employee(
 data class Leave(
     val id: String = UUID.randomUUID().toString(),
     val emp_id: String = "",
-    @SerialName("employee_name") val employeeName: String = "",  // ✅ تطابق مع قاعدة البيانات
-    @SerialName("from_date") val from: String = "",              // ✅ تطابق مع قاعدة البيانات
-    @SerialName("to_date") val to: String = "",                  // ✅ تطابق مع قاعدة البيانات
+    @SerialName("employee_name") val employeeName: String = "",
+    @SerialName("from_date") val from: String = "",
+    @SerialName("to_date") val to: String = "",
     val days: Double = 0.0,
     val type: String = "annual",
     val half_day: Boolean = false,
