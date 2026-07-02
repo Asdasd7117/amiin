@@ -101,6 +101,7 @@ fun LoginScreen(vm: MainViewModel) {
 @Composable
 fun DashboardScreen(state: AppState) {
     val user = state.user ?: return
+    val isAdmin = user.role.trim().lowercase() == "admin"
     val emp = state.employees.firstOrNull { it.id == user.staff_id }
     val bal = emp?.let { getBalance(it) }
 
@@ -120,7 +121,7 @@ fun DashboardScreen(state: AppState) {
                     Text("مرحباً بك 👋", color = C.text2)
                     Text(user.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = C.text)
                     Text(
-                        if (user.role == "admin") "🛡 مدير النظام" else "👤 موظف",
+                        if (isAdmin) "🛡 مدير النظام" else "👤 موظف",
                         color = C.text2
                     )
                     if (emp != null) {
@@ -142,7 +143,12 @@ fun DashboardScreen(state: AppState) {
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatBox("${state.employees.size}", "الموظفين", C.p, Modifier.weight(1f))
+                // ✅ إخفاء عدد الموظفين عن غير المدير
+                if (isAdmin) {
+                    StatBox("${state.employees.size}", "الموظفين", C.p, Modifier.weight(1f))
+                } else {
+                    StatBox("—", "الموظفين", C.p, Modifier.weight(1f))
+                }
                 StatBox("$upcoming", "قادمة", C.p2, Modifier.weight(1f))
             }
         }
@@ -196,7 +202,6 @@ fun EntryScreen(state: AppState, vm: MainViewModel, onDone: () -> Unit) {
         }
     }
 
-    // ✅ الإصلاح هنا: إجبار استخدام الأرقام الإنجليزية للتاريخ
     fun pickDate(onPicked: (String) -> Unit) {
         val cal = Calendar.getInstance()
         DatePickerDialog(ctx, { _, y, m, d ->
@@ -347,15 +352,31 @@ fun RecordsScreen(state: AppState) {
     }
 }
 
+// ✅ التعديل: الموظف يرى رصيده فقط، المدير يرى الجميع
 @Composable
 fun BalanceScreen(state: AppState) {
+    val user = state.user ?: return
+    val isAdmin = user.role.trim().lowercase() == "admin"
+    
+    val employeesToShow = if (isAdmin) {
+        state.employees
+    } else {
+        state.employees.filter { it.id == user.staff_id }
+    }
+    
     LazyColumn(
         Modifier.fillMaxSize().background(C.bg).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        item { Text("📊 أرصدة الموظفين", fontSize = 18.sp, color = C.text) }
+        item { 
+            Text(
+                if (isAdmin) "📊 أرصدة الموظفين" else "📊 رصيدي", 
+                fontSize = 18.sp, 
+                color = C.text
+            ) 
+        }
 
-        items(state.employees) { emp ->
+        items(employeesToShow) { emp ->
             Card(colors = CardDefaults.cardColors(containerColor = C.surface)) {
                 Column(Modifier.padding(14.dp)) {
                     Text(emp.name, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = C.text)
@@ -369,6 +390,10 @@ fun BalanceScreen(state: AppState) {
                     BalanceRow("الوعاء التراكمي", "${bal.containerDays} يوم", C.p2)
                 }
             }
+        }
+        
+        if (employeesToShow.isEmpty()) {
+            item { EmptyBox("لا توجد أرصدة لعرضها") }
         }
     }
 }
@@ -459,8 +484,8 @@ fun AdminScreen(state: AppState, vm: MainViewModel) {
         AddUserDialog(
             emps = state.employees,
             onDismiss = { showAddUser = false },
-            onAdd = { name, email, pass, role, staffId ->
-                vm.addUser(name, email, pass, role, staffId)
+            onAdd = { name, email, phone, pass, role, staffId ->
+                vm.addUser(name, email, phone, pass, role, staffId)
                 showAddUser = false
                 Toast.makeText(ctx, "✅ تم إضافة المستخدم: $name", Toast.LENGTH_SHORT).show()
             }
@@ -504,6 +529,7 @@ fun EmployeesTab(emps: List<Employee>, vm: MainViewModel) {
     }
 }
 
+// ✅ التعديل: استخدام phone من User مباشرة
 @Composable
 fun UsersTab(users: List<User>, emps: List<Employee>, vm: MainViewModel) {
     val ctx = LocalContext.current
@@ -515,6 +541,9 @@ fun UsersTab(users: List<User>, emps: List<Employee>, vm: MainViewModel) {
                         Column(Modifier.weight(1f)) {
                             Text(u.name, fontWeight = FontWeight.Bold, color = C.text)
                             Text(u.email, fontSize = 12.sp, color = C.text2)
+                            if (u.phone.isNotEmpty()) {
+                                Text("📱 ${u.phone}", fontSize = 12.sp, color = C.text2)
+                            }
                             Text("🛡 ${u.role}", fontSize = 11.sp,
                                 color = if (u.role == "admin") C.p else C.acc)
                         }
@@ -522,11 +551,11 @@ fun UsersTab(users: List<User>, emps: List<Employee>, vm: MainViewModel) {
                             Icon(Icons.Default.Delete, null, tint = C.err)
                         }
                     }
-                    val emp = emps.firstOrNull { it.id == u.staff_id }
-                    if (emp != null && emp.phone.isNotEmpty()) {
+                    
+                    if (u.phone.isNotEmpty()) {
                         Spacer(Modifier.height(8.dp))
                         Button(
-                            onClick = { sendCredentialsWA(emp.phone, u.email, emp.name, ctx) },
+                            onClick = { sendCredentialsWA(u.phone, u.email, u.name, ctx) },
                             colors = ButtonDefaults.buttonColors(containerColor = C.wa),
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -626,11 +655,13 @@ fun EditEmployeeDialog(emp: Employee, onDismiss: () -> Unit, onSave: (Employee) 
         dismissButton = { TextButton(onDismiss) { Text("إلغاء") } })
 }
 
+// ✅ التعديل: إضافة حقل رقم الهاتف
 @Composable
 fun AddUserDialog(emps: List<Employee>, onDismiss: () -> Unit,
-                  onAdd: (String, String, String, String, String?) -> Unit) {
+                  onAdd: (String, String, String, String, String, String?) -> Unit) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("employee") }
     var staffId by remember { mutableStateOf<String?>(null) }
@@ -642,6 +673,7 @@ fun AddUserDialog(emps: List<Employee>, onDismiss: () -> Unit,
             Column {
                 OutlinedTextField(name, { name = it }, label = { Text("الاسم") })
                 OutlinedTextField(email, { email = it }, label = { Text("البريد") })
+                OutlinedTextField(phone, { phone = it }, label = { Text("📱 رقم الهاتف") })
                 OutlinedTextField(pass, { pass = it }, label = { Text("كلمة المرور") })
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(role == "employee", { role = "employee" }); Text("موظف")
@@ -663,7 +695,7 @@ fun AddUserDialog(emps: List<Employee>, onDismiss: () -> Unit,
             }
         },
         confirmButton = {
-            Button(onClick = { onAdd(name, email, pass, role, staffId) },
+            Button(onClick = { onAdd(name, email, phone, pass, role, staffId) },
                 colors = ButtonDefaults.buttonColors(containerColor = C.primary)) { Text("إضافة") }
         },
         dismissButton = { TextButton(onDismiss) { Text("إلغاء") } })
